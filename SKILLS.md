@@ -1,15 +1,85 @@
 ---
 name: minions-tasks
-description: Agent skills for creating, managing, and tracking tasks within the Minions ecosystem. Handles task lifecycle, dependencies, recurring tasks, and progress tracking.
+description: Agent skills for creating, managing, and tracking tasks within the Minions ecosystem. Provides CRUD operations via CLI and SDK, task lifecycle management, dependency handling, and recurring task automation.
 ---
 
 # minions-tasks Agent Skills
 
 Skills for agents operating on the `minions-tasks` toolbox. All data is structured as Minion objects using the MinionTypes defined in `@minions-tasks/sdk`.
 
-## Context
+## Prerequisites
 
-The `minions-tasks` store is the universal work management layer. Any agent in the fleet can create tasks here. The `contextRef` field on each task links it back to the originating Minion (a job posting, a proposal draft, an agent run, etc.).
+```bash
+# TypeScript SDK
+pnpm add @minions-tasks/sdk
+
+# Python SDK
+pip install minions-tasks
+
+# CLI (global install for scripted operations)
+pnpm add -g @minions-tasks/cli
+```
+
+---
+
+## Using the CLI
+
+The `tasks` CLI is the primary interface for scripted and terminal-based operations:
+
+```bash
+# Show project info (SDK name, CLI name, Python package)
+tasks info
+```
+
+Use the CLI for scripted batch operations. For programmatic access within agent code, use the SDK directly.
+
+---
+
+## Using the SDK
+
+### TypeScript
+
+```ts
+import { customTypes } from '@minions-tasks/sdk/schemas';
+
+// List all available MinionTypes
+for (const type of customTypes) {
+  console.log(`${type.icon} ${type.name} (${type.slug})`);
+  console.log(`  ${type.description}`);
+  console.log(`  Fields: ${type.schema.map(f => f.name).join(', ')}`);
+}
+
+// Access a specific MinionType
+const taskType = customTypes.find(t => t.slug === 'task');
+const taskListType = customTypes.find(t => t.slug === 'task-list');
+```
+
+### Python
+
+```python
+from minions_tasks.schemas import custom_types
+
+# List all MinionTypes
+for t in custom_types:
+    print(f"{t.icon} {t.name} ({t.slug})")
+    print(f"  {t.description}")
+```
+
+---
+
+## Available MinionTypes
+
+| Slug | Icon | Purpose |
+|------|------|---------|
+| `task` | ✅ | A unit of work assignable to a human or agent |
+| `task-list` | 📋 | An ordered or unordered collection of tasks |
+| `task-dependency` | 🔗 | A blocking or relational dependency between tasks |
+| `recurring-task` | 🔁 | A task template that spawns new instances on schedule |
+| `task-assignment` | 👤 | An explicit assignment of a task to a person or agent |
+| `task-checkpoint` | 🚩 | A named milestone or progress marker within a task |
+| `task-history-entry` | 🕰️ | An immutable log of a single field change on a task |
+| `task-comment` | 💬 | A comment or note left on a task |
+| `task-outcome` | 🎯 | The recorded result of a completed or failed task |
 
 ---
 
@@ -22,6 +92,7 @@ When any workflow step produces a unit of work, create a `task` Minion.
 3. Set `priority` based on urgency: `"critical"` for blocking items, `"high"` for time-sensitive, `"medium"` for standard, `"low"` for backlog
 4. If the task is a subtask, set `parentTaskId` to the parent task's ID
 5. Always set `createdBy` to the creating agent's ID
+6. Valid `status` values: `"backlog"`, `"todo"`, `"in-progress"`, `"blocked"`, `"done"`, `"cancelled"`
 
 ---
 
@@ -77,6 +148,22 @@ Manage tasks that repeat on a schedule.
 
 ---
 
+## Cross-Toolbox Context
+
+The `contextRef` fields on `task` are the bridge to other toolboxes:
+
+```
+agent-run (minions-agents)           → spawns tasks with contextRef: { type: "agent-run" }
+job-posting (minions-jobs)           → has tasks like "research this client"
+proposal-draft (minions-proposals)   → has tasks like "add portfolio item X"
+deliverable (minions-contracts)      → has tasks for work items within a contract
+approval-request (minions-approvals) → is itself a task waiting for human action
+```
+
+Rather than every toolbox defining its own "todo" concept, they all point to `minions-tasks` for anything that represents work to be done.
+
+---
+
 ## Hard Rules
 
 - Every task MUST have a `contextRefType` and `contextRefId` — orphaned tasks are not allowed
@@ -84,3 +171,5 @@ Manage tasks that repeat on a schedule.
 - Never delete tasks — set status to `"cancelled"` instead
 - All status transitions must be logged via `task-history-entry`
 - Recurring task spawning must be idempotent — check `lastRunAt` before spawning to avoid duplicates
+- All timestamps in ISO 8601 format
+- This agent only writes to `minions-tasks` — it reads from other toolboxes but never writes to them

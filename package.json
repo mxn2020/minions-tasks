@@ -1,7 +1,7 @@
 {
     "name": "minions-tasks-workspace",
     "private": true,
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Task and work management across agents, humans, and workflows",
     "type": "module",
     "license": "MIT",

@@ -12,7 +12,7 @@ const program = new Command();
 program
     .name('tasks')
     .description('Task and work management across agents, humans, and workflows')
-    .version('0.1.0');
+    .version('0.1.1');
 
 program
     .command('info')
