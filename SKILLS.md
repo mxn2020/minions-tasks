@@ -1,6 +1,12 @@
 ---
 name: minions-tasks
-description: Agent skills for managing tasks via the `tasks` CLI. Covers creating, assigning, tracking, blocking, completing, and recurring task management.
+id: OC-0163
+version: 1.0.0
+description: "Agent skills for managing tasks via the `tasks` CLI. Covers creating, assigning, tracking, blocking, completing, and recurring task management."
+category: productivity
+subcategory: tasks
+tags: ["minion", "productivity", "tasks"]
+comments:
 ---
 
 # minions-tasks — Agent Skills
