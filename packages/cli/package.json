@@ -1,6 +1,6 @@
 {
   "name": "@minions-tasks/cli",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "CLI for minions-tasks — Task and work management across agents, humans, and workflows",
   "license": "MIT",
   "repository": {
