@@ -1,6 +1,6 @@
 {
   "name": "@minions-tasks/sdk",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Task and work management across agents, humans, and workflows",
   "type": "module",
   "main": "./dist/index.js",
