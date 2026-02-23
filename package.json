@@ -1,0 +1,28 @@
+{
+    "name": "minions-tasks-workspace",
+    "private": true,
+    "version": "0.1.0",
+    "description": "Task and work management across agents, humans, and workflows",
+    "type": "module",
+    "license": "MIT",
+    "author": "Mehdi Nabhani <mehdi@the-mehdi.com> (https://the-mehdi.com)",
+    "workspaces": [
+        "packages/*",
+        "apps/*"
+    ],
+    "scripts": {
+        "build": "pnpm --filter @minions-tasks/sdk run build && pnpm --filter @minions-tasks/cli run build && pnpm --filter @minions-tasks/docs run build && pnpm --filter @minions-tasks/blog run build && pnpm --filter @minions-tasks/web run build",
+        "deploy:blog": "pnpm --filter @minions-tasks/blog run build && netlify deploy --dir apps/blog/dist --prod",
+        "deploy:docs": "pnpm --filter @minions-tasks/docs run build && netlify deploy --dir apps/docs/dist --prod",
+        "deploy:web": "pnpm --filter @minions-tasks/web run build && netlify deploy --dir apps/web/dist --prod",
+        "test": "pnpm --filter @minions-tasks/sdk run test",
+        "lint": "pnpm --filter @minions-tasks/sdk run build && pnpm --filter @minions-tasks/sdk run lint && pnpm --filter @minions-tasks/cli run lint",
+        "deploy": "pnpm run deploy:blog"
+    },
+    "engines": {
+        "node": ">=20"
+    },
+    "devDependencies": {
+        "typescript": "^5.9.3"
+    }
+}
