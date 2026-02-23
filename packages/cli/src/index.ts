@@ -170,7 +170,7 @@ program
 
         console.log(chalk.bold(`\n  ${minions.length} Minion(s):\n`));
         for (const m of minions) {
-            const type = registry.get(m.minionTypeId);
+            const type = registry.getById(m.minionTypeId) || registry.getBySlug(m.minionTypeId);
             const icon = type?.icon || '?';
             const status = m.status ? chalk.dim(`[${m.status}]`) : '';
             console.log(`  ${icon}  ${chalk.bold(m.title)} ${status}`);
@@ -191,7 +191,7 @@ program
 
         if (opts.json) { console.log(JSON.stringify(minion, null, 2)); return; }
 
-        const type = registry.get(minion.minionTypeId);
+        const type = registry.getById(minion.minionTypeId) || registry.getBySlug(minion.minionTypeId);
         console.log(`\n  ${type?.icon || '?'}  ${chalk.bold(minion.title)}`);
         console.log(`  ${chalk.dim(`Type: ${type?.slug || minion.minionTypeId}  ID: ${minion.id}`)}`);
         console.log(`  ${chalk.dim(`Status: ${minion.status || '-'}  Priority: ${minion.priority || '-'}`)}`);
@@ -225,11 +225,13 @@ program
         if (opts.title) updates.title = opts.title;
         if (opts.tags) updates.tags = opts.tags.split(',').map((t: string) => t.trim());
 
-        const updated = updateMinion(existing, { ...updates, updatedBy: 'cli' });
+        const typeDef = registry.getById(existing.minionTypeId) || registry.getBySlug(existing.minionTypeId);
+        if (!typeDef) { console.error(chalk.red(`\n  Minion type not found: ${existing.minionTypeId}\n`)); process.exit(1); }
+        const { minion: updated } = updateMinion(existing, { ...updates, updatedBy: 'cli' }, typeDef);
         await storage.set(updated);
 
-        const type = registry.get(updated.minionTypeId);
-        console.log(chalk.green(`\n  ✔ Updated ${type?.icon || '?'} ${updated.title}\n`));
+        const type = registry.getById(updated.minionTypeId) || registry.getBySlug(updated.minionTypeId);
+        console.log(chalk.green(`\n  ✔ Updated ${type?.icon || '?'} ${updated.title}`));
     });
 
 // ─── delete ────────────────────────────────────────────────
@@ -267,7 +269,7 @@ program
 
         console.log(chalk.bold(`\n  ${results.length} result(s) for "${query}":\n`));
         for (const m of results) {
-            const type = registry.get(m.minionTypeId);
+            const type = registry.getById(m.minionTypeId) || registry.getBySlug(m.minionTypeId);
             const icon = type?.icon || '?';
             const status = m.status ? chalk.dim(`[${m.status}]`) : '';
             console.log(`  ${icon}  ${chalk.bold(m.title)} ${status}`);
@@ -324,11 +326,13 @@ program
         if (!task) { console.error(chalk.red(`\n  Task not found: ${id}\n`)); process.exit(1); }
 
         // Update task status
-        const completed = updateMinion(task, {
+        const typeDef = registry.getById(task.minionTypeId) || registry.getBySlug(task.minionTypeId);
+        if (!typeDef) { console.error(chalk.red(`\n  Minion type not found: ${task.minionTypeId}\n`)); process.exit(1); }
+        const { minion: completed } = updateMinion(task, {
             fields: { ...task.fields, status: 'done', completedAt: new Date().toISOString() },
             status: 'completed',
             updatedBy: 'cli',
-        });
+        }, typeDef);
         await storage.set(completed);
 
         // Create task-outcome
@@ -418,7 +422,7 @@ program
         const { readFileSync } = await import('fs');
         const { validateFields } = await import('minions-sdk');
         const data = JSON.parse(readFileSync(file, 'utf-8')) as Minion;
-        const type = registry.get(data.minionTypeId);
+        const type = registry.getById(data.minionTypeId) || registry.getBySlug(data.minionTypeId);
 
         if (!type) {
             console.error(chalk.red(`\n  Unknown type: ${data.minionTypeId}\n`));

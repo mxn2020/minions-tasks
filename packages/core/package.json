@@ -24,7 +24,7 @@
     "docs": "typedoc"
   },
   "dependencies": {
-    "minions-sdk": "^0.2.2"
+    "minions-sdk": "^0.2.3"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
@@ -33,7 +33,11 @@
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   },
-  "keywords": ["tasks","ai","minions"],
+  "keywords": [
+    "tasks",
+    "ai",
+    "minions"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
