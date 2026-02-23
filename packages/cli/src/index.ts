@@ -41,7 +41,7 @@ function findType(slug: string) {
 program
     .name('tasks')
     .description('Task and work management across agents, humans, and workflows')
-    .version('0.3.0');
+    .version('0.4.0');
 
 // ─── info ──────────────────────────────────────────────────
 program
@@ -361,4 +361,197 @@ program
         console.log(`  ${chalk.dim(`Store: ${STORE_DIR}`)}\n`);
     });
 
+// ─── blocked ───────────────────────────────────────────────
+program
+    .command('blocked')
+    .description('List all tasks with status "blocked" and their dependencies')
+    .action(() => {
+        ensureStore();
+        const taskDir = join(STORE_DIR, 'task');
+        const depDir = join(STORE_DIR, 'task-dependency');
+        if (!existsSync(taskDir)) { console.log(chalk.dim('\n  No tasks found.\n')); return; }
+
+        const tasks = readdirSync(taskDir).filter(f => f.endsWith('.json'))
+            .map(f => JSON.parse(readFileSync(join(taskDir, f), 'utf-8')))
+            .filter(t => t.fields?.status === 'blocked');
+
+        if (tasks.length === 0) { console.log(chalk.green('\n  ✔ No blocked tasks.\n')); return; }
+
+        const deps = existsSync(depDir)
+            ? readdirSync(depDir).filter(f => f.endsWith('.json')).map(f => JSON.parse(readFileSync(join(depDir, f), 'utf-8')))
+            : [];
+
+        console.log(chalk.bold(`\n  🚫 ${tasks.length} blocked task(s):\n`));
+        for (const t of tasks) {
+            console.log(`  ✅  ${chalk.bold(t.fields.title || '(untitled)')}`);
+            console.log(`     ${chalk.dim(t.id)}`);
+            const taskDeps = deps.filter(d => d.fields?.taskId === t.id);
+            if (taskDeps.length > 0) {
+                for (const d of taskDeps) {
+                    console.log(`     ${chalk.red('→')} blocked by ${chalk.dim(d.fields.dependsOnTaskId)} (${d.fields.type})`);
+                }
+            } else {
+                console.log(`     ${chalk.dim('No dependency records found')}`);
+            }
+            console.log('');
+        }
+    });
+
+// ─── search ────────────────────────────────────────────────
+program
+    .command('search <query>')
+    .description('Search Minions by title, name, or label')
+    .option('-t, --type <type>', 'Filter by MinionType slug')
+    .option('--status <status>', 'Filter by status')
+    .option('--json', 'Output as JSON')
+    .action((query: string, opts: any) => {
+        ensureStore();
+        const slugs = opts.type ? [opts.type] : customTypes.map(t => t.slug);
+        const results: any[] = [];
+        const q = query.toLowerCase();
+
+        for (const slug of slugs) {
+            const dir = join(STORE_DIR, slug);
+            if (!existsSync(dir)) continue;
+            const files = readdirSync(dir).filter(f => f.endsWith('.json'));
+            for (const file of files) {
+                const minion = JSON.parse(readFileSync(join(dir, file), 'utf-8'));
+                const title = (minion.fields?.title || minion.fields?.name || minion.fields?.label || '').toLowerCase();
+                const desc = (minion.fields?.description || minion.fields?.body || '').toLowerCase();
+                if (title.includes(q) || desc.includes(q)) {
+                    if (opts.status && minion.fields?.status !== opts.status) continue;
+                    results.push(minion);
+                }
+            }
+        }
+
+        if (opts.json) { console.log(JSON.stringify(results, null, 2)); return; }
+        if (results.length === 0) { console.log(chalk.dim(`\n  No results for "${query}".\n`)); return; }
+
+        console.log(chalk.bold(`\n  ${results.length} result(s) for "${query}":\n`));
+        for (const m of results) {
+            const type = customTypes.find(t => t.slug === m.type);
+            const icon = type?.icon || '?';
+            const title = m.fields?.title || m.fields?.name || m.fields?.label || chalk.dim('(untitled)');
+            const status = m.fields?.status ? chalk.dim(`[${m.fields.status}]`) : '';
+            console.log(`  ${icon}  ${chalk.bold(title)} ${status}`);
+            console.log(`     ${chalk.dim(m.id)} ${chalk.dim(m.type)}`);
+        }
+        console.log('');
+    });
+
+// ─── complete ──────────────────────────────────────────────
+program
+    .command('complete <id>')
+    .description('Mark a task as done and create a task-outcome')
+    .option('-r, --result <result>', 'Outcome result: success, partial, or failed', 'success')
+    .option('--summary <summary>', 'Summary of what was accomplished')
+    .option('--lessons <lessons>', 'Lessons learned for the agent learning loop')
+    .action((id: string, opts: any) => {
+        ensureStore();
+        const filePath = join(STORE_DIR, 'task', `${id}.json`);
+        if (!existsSync(filePath)) {
+            console.error(chalk.red(`\n  Task not found: ${id}\n`));
+            process.exit(1);
+        }
+
+        const task = JSON.parse(readFileSync(filePath, 'utf-8'));
+        task.fields.status = 'done';
+        task.fields.completedAt = new Date().toISOString();
+        task.updatedAt = new Date().toISOString();
+        writeFileSync(filePath, JSON.stringify(task, null, 2));
+
+        // Create task-outcome
+        const outcome = {
+            id: randomUUID(),
+            type: 'task-outcome',
+            typeName: 'Task outcome',
+            fields: {
+                taskId: id,
+                result: opts.result,
+                summary: opts.summary || '',
+                artifactIds: '',
+                lessons: opts.lessons || '',
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+        const outcomeDir = getTypeDir('task-outcome');
+        writeFileSync(join(outcomeDir, `${outcome.id}.json`), JSON.stringify(outcome, null, 2));
+
+        console.log(chalk.green(`\n  ✔ Completed ✅ ${task.fields.title || 'Task'}`));
+        console.log(`  ${chalk.dim('Result:')}  ${opts.result}`);
+        console.log(`  ${chalk.dim('Outcome:')} ${outcome.id}\n`);
+    });
+
+// ─── assign ────────────────────────────────────────────────
+program
+    .command('assign <taskId> <assigneeId>')
+    .description('Assign a task to a person or agent')
+    .option('--type <type>', 'Assignee type: human or agent', 'agent')
+    .option('--role <role>', 'Role: owner, collaborator, reviewer, observer', 'owner')
+    .action((taskId: string, assigneeId: string, opts: any) => {
+        ensureStore();
+        const taskPath = join(STORE_DIR, 'task', `${taskId}.json`);
+        if (!existsSync(taskPath)) {
+            console.error(chalk.red(`\n  Task not found: ${taskId}\n`));
+            process.exit(1);
+        }
+
+        const assignment = {
+            id: randomUUID(),
+            type: 'task-assignment',
+            typeName: 'Task assignment',
+            fields: {
+                taskId,
+                assigneeId,
+                assigneeType: opts.type,
+                assignedAt: new Date().toISOString(),
+                assignedBy: 'cli',
+                role: opts.role,
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        const dir = getTypeDir('task-assignment');
+        writeFileSync(join(dir, `${assignment.id}.json`), JSON.stringify(assignment, null, 2));
+
+        console.log(chalk.green(`\n  ✔ Assigned task to ${assigneeId}`));
+        console.log(`  ${chalk.dim('Task:')}       ${taskId}`);
+        console.log(`  ${chalk.dim('Type:')}       ${opts.type}`);
+        console.log(`  ${chalk.dim('Role:')}       ${opts.role}`);
+        console.log(`  ${chalk.dim('Assignment:')} ${assignment.id}\n`);
+    });
+
+// ─── comment ───────────────────────────────────────────────
+program
+    .command('comment <taskId> <body>')
+    .description('Add a comment to a task')
+    .option('--author <id>', 'Author ID', 'cli')
+    .option('--type <type>', 'Author type: human or agent', 'agent')
+    .action((taskId: string, body: string, opts: any) => {
+        ensureStore();
+        const comment = {
+            id: randomUUID(),
+            type: 'task-comment',
+            typeName: 'Task comment',
+            fields: {
+                taskId,
+                authorId: opts.author,
+                authorType: opts.type,
+                body,
+                createdAt: new Date().toISOString(),
+                resolvedAt: '',
+            },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+        const dir = getTypeDir('task-comment');
+        writeFileSync(join(dir, `${comment.id}.json`), JSON.stringify(comment, null, 2));
+        console.log(chalk.green(`\n  ✔ Comment added to task ${taskId}`));
+        console.log(`  ${chalk.dim('ID:')} ${comment.id}\n`);
+    });
+
 program.parse();
+
