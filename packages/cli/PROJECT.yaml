@@ -6,3 +6,4 @@ description: "CLI for minions-tasks — Task and work management across agents, 
 priority: high
 deploy_url: null
 tags: null
+category: minion-toolbox

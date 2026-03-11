@@ -6,3 +6,4 @@ description: "Task and work management across agents, humans, and workflows"
 priority: high
 deploy_url: null
 tags: null
+category: minion-toolbox
