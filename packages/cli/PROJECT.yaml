@@ -1,0 +1,8 @@
+name: "@minions-tasks/cli"
+project_scope: child
+child_type: cli
+parent_project: minions-tasks-workspace
+description: "CLI for minions-tasks — Task and work management across agents, humans, and workflows"
+priority: high
+deploy_url: null
+tags: null

@@ -1,0 +1,8 @@
+name: "@minions-tasks/sdk"
+project_scope: child
+child_type: sdk
+parent_project: minions-tasks-workspace
+description: "Task and work management across agents, humans, and workflows"
+priority: high
+deploy_url: null
+tags: null

@@ -26,7 +26,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "tsc --noEmit",
-    "dev": "node --loader ts-node/esm src/index.ts"
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "@minions-tasks/sdk": "workspace:*",
@@ -37,6 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.0"
   }
 }
