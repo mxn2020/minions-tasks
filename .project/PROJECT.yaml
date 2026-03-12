@@ -1,0 +1,16 @@
+name: minions-tasks-workspace
+project_scope: main
+project_type: monorepo
+description: Task and work management across agents, humans, and workflows
+tier: prototype
+lane: minions-platform
+priority: medium
+oss: true
+stack: ["typescript"]
+repo: "https://github.com/mxn2020/minions-tasks"
+deploy_url: null
+last_active: 2026-03-11
+tags: ["minions-tasks-workspace", "minions", "toolbox"]
+notes: null
+id: null
+category: minion-toolbox
